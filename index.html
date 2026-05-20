@@ -406,12 +406,30 @@ function initMap(){
   L.control.zoom({position:"bottomright"}).addTo(S.map);
 }
 
-function loadHeatmap(){
+async function loadHeatmap(){
   if(!window.L||!window.L.heatLayer)return;
-  const pts=S.incidents.filter(i=>i.lat&&i.lng).map(i=>[i.lat,i.lng,i.priority==="p1"?1:i.priority==="p2"?0.6:0.3]);
-  if(!pts.length)return;
-  S.heatLayer=L.heatLayer(pts,{radius:18,blur:22,maxZoom:17,gradient:{0.3:"#1d4ed8",0.5:"#f59e0b",0.75:"#ef4444",1:"#fff"}});
-  document.getElementById("heat-note").textContent=`${pts.length.toLocaleString()} incidents · 2025`;
+  try{
+    // Load last 6 months of data for heatmap — more points, better density
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const since = sixMonthsAgo.toISOString().split('T')[0];
+    const pts = await SB.query(
+      `dc_incidents?select=lat,lng,priority&lat=not.is.null&lng=not.is.null&occurred_on=gte.${since}&limit=5000`
+    );
+    if(!pts.length) return;
+    const heatPts = pts.map(p=>{
+      const w = p.priority==="p1"?1.0:p.priority==="p2"?0.6:0.3;
+      return [parseFloat(p.lat), parseFloat(p.lng), w];
+    });
+    S.heatLayer=L.heatLayer(heatPts,{
+      radius:22,
+      blur:28,
+      maxZoom:17,
+      max:1.0,
+      gradient:{0.2:"#0000ff",0.4:"#00ffff",0.6:"#00ff00",0.8:"#ffff00",1.0:"#ff0000"}
+    });
+    document.getElementById("heat-note").textContent=`${pts.length.toLocaleString()} incidents · last 6 months`;
+  }catch(e){console.log("[Heatmap]",e.message);}
 }
 
 function toggleDistricts(){
@@ -652,10 +670,10 @@ async function boot(){
   }
   try{
     document.getElementById("boot-msg").textContent="Loading DC incidents…";
-    const rows=await SB.query(`dc_incidents?select=*&lat=not.is.null&occurred_on=gte.2026-01-01&order=occurred_on.desc&limit=350`);
+    const rows=await SB.query(`dc_incidents?select=*&lat=not.is.null&order=occurred_on.desc&limit=350`);
     S.incidents=rows.map(i=>({...i,lat:i.lat?parseFloat(i.lat):null,lng:i.lng?parseFloat(i.lng):null}));
     setConn(true);
-    loadHeatmap();
+    loadHeatmap();  // async — loads 6-month dataset independently
     document.getElementById("boot-overlay").classList.add("gone");
     renderFeed();
   }catch(err){
