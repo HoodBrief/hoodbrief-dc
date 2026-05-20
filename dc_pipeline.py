@@ -267,7 +267,7 @@ def sb_headers():
         "apikey":        SUPABASE_KEY,
         "Authorization": f"Bearer {SUPABASE_KEY}",
         "Content-Type":  "application/json",
-        "Prefer":        "resolution=merge-duplicates,return=minimal",
+        "Prefer":        "return=minimal",
     }
 
 def upsert_batch(table, rows, batch_size=500):
@@ -289,18 +289,14 @@ def upsert_batch(table, rows, batch_size=500):
     return total
 
 def clear_table(table):
-    resp = requests.delete(
-        f"{SUPABASE_URL}/rest/v1/{table}?id=gte.0",
-        headers=sb_headers(),
+    requests.delete(
+        f"{SUPABASE_URL}/rest/v1/{table}?city=eq.dc",
+        headers={
+            "apikey":        SUPABASE_KEY,
+            "Authorization": f"Bearer {SUPABASE_KEY}",
+        },
         timeout=30,
     )
-    # Also handle uuid primary keys
-    if resp.status_code not in (200, 204):
-        requests.delete(
-            f"{SUPABASE_URL}/rest/v1/{table}?incident_number=neq.NONE",
-            headers=sb_headers(),
-            timeout=30,
-        )
 
 # ══════════════════════════════════════════════════════════════════
 #  CSV PROCESSOR
