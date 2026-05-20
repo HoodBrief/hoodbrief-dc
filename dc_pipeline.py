@@ -149,7 +149,7 @@ def check_dc_hotspot(location):
 #  DIPLOMATIC PROXIMITY  (250m radius)
 # ══════════════════════════════════════════════════════════════════
 
-DIPLOMATIC_RADIUS_M = 250
+DIPLOMATIC_RADIUS_M = 100
 
 # DC Foreign Missions — embassies, chanceries, residences,
 # consulates, and major international organizations.
